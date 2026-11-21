@@ -68,9 +68,19 @@ class AsOfAlignmentMixin(CalendarAwareMixin):
         df: pl.DataFrame,
         notice_date_col: str = "notice_date",
         by_col: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> pl.DataFrame:
+        if by_col is not None and 'sec_id' in df.columns:
+            raise ValueError(
+                '检测到输入面板包含 "sec_id" 列， 多标的pit对齐必须显示指定 by_col="sec_id",否则会导致跨股票数据串扰！'
+            )
         cal = self.calendar.df.select("date").sort("date")
-        data = df.sort(notice_date_col)
+        if start_date:
+            cal = cal.filter(pl.col("date") >= pl.lit(start_date))
+        if end_date:
+            cal = cal.filter(pl.col("date") <= pl.lit(end_date))
+        cal = cal.sort('date')
 
         join_kwargs = {
             "left_on": "date",
@@ -78,8 +88,18 @@ class AsOfAlignmentMixin(CalendarAwareMixin):
             "strategy": "backward",  # 严格向前查找最新已公开数据
         }
         if by_col:
+            # 需要按照个股来构建一个个股 * 日期的面板，以为每个个股构建独立的交易日历
+            unique_ids = df.select(by_col).unique()
+            left_grid = cal.join(unique_ids, how="cross").sort([by_col, 'date'])
+            data = (
+                df.filter(pl.col(notice_date_col).is_not_null())
+                .unique(subset=[by_col, notice_date_col], keep='last')
+                .sort([by_col, notice_date_col])
+            )
             join_kwargs["by"] = by_col
-
+            return  left_grid.join(data, **join_kwargs)
+        data = (df.filter(pl.col(notice_date_col).is_null())
+                .sort(notice_date_col))
         aligned = cal.join_asof(data, **join_kwargs)
         return aligned
 
