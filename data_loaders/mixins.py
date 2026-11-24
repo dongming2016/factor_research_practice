@@ -12,7 +12,7 @@ class CalendarAwareMixin:
     """提供统一日历访问能力的基石 Mixin"""
     @property
     def calendar(self) -> TradingCalendar:
-        return TradingCalendar()
+        return TradingCalendar().initialize(file_path = 'datas/trading_calendar.parquet', date_col = 'date')
 
 
 class GridAlignmentMixin(CalendarAwareMixin):
