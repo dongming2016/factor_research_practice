@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Union, List, Iterable
 import os
 import pandas as pd
 import polars as pl
-from fontTools.varLib.instancer import names
+
 
 from data_loaders.trading_calendar import TradingCalendar
 from strategy.factors.valuation.config import PanelSchema
@@ -117,8 +117,6 @@ class FundamentalValuationAdapter:
         将日频估值宽表与带真实披露日期的财报数据合成 PIT 基准面板：
         - 严格按 notice_date <= date 执行 backward join_asof, 杜绝未来函数
         :param valuation_source:
-        :param financial_source:
-        :param financial_cols:
         :return:
         '''
         s = self.schema
@@ -130,22 +128,44 @@ class FundamentalValuationAdapter:
 
         return self.enforce_contract(base_df)
 
+    # 阶段 2: 添加财报指标
+    @staticmethod
+    def build_fin_df(
+            # self,
+            fin_source: Union[str, Path],
+            disclosure_source: Union[str, Path]
+    ) -> pl.DataFrame:
+        fin_panel = pd.read_pickle(fin_source)
+        disclosure_panel = pd.read_pickle(disclosure_source)['panel']
+        fin_panel_2 = fin_panel.stack().dropna().reset_index().rename(columns={'level_1': 'sec_id', 0: 'roe', 'date': 'notice_date'})
+        disclosure_panel_2 = disclosure_panel.stack().dropna().reset_index().rename(columns={'wind': 'sec_id', 'level_1': 'report_period', 0: 'notice_date'})
+        fin_panel_2.notice_date = pd.to_datetime(fin_panel_2.notice_date)
+        disclosure_panel_2.notice_date = pd.to_datetime(disclosure_panel_2.notice_date)
+        merged_fin_panel = fin_panel_2.merge(disclosure_panel_2, on=['sec_id', 'notice_date'], how='inner')
+
+        return pl.from_pandas(merged_fin_panel)
+
+    @staticmethod
     def save(
+            panel_df: pl.DataFrame,
+            output_path: Union[str, Path],
+            compression: str = 'zstd') -> Path:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = out.with_suffix(f'{out.suffix}.tmp')
+        panel_df.write_parquet(tmp_path, compression=compression, statistics=True)
+        os.replace(tmp_path, out)
+        return out
+
+    def save_value_df(
             self,
             panel_df: pl.DataFrame,
             output_path: Union[str, Path],
             compression: str = 'zstd'
     ) -> Path:
         '''原子写入标准 Parquet 基准仓（先写 .tmp 再 os.replace 防止损坏'''
-        out = Path(output_path)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = out.with_suffix(f'{out.suffix}.tmp')
-
         clean_df = self.enforce_contract(panel_df)
-        clean_df.write_parquet(tmp_path, compression=compression, statistics=True)
-        os.replace(tmp_path, out)
-
-        return out
+        return self.__class__.save(panel_df=clean_df, output_path=output_path, compression=compression)
 
 if __name__ == '__main__':
     adapter = FundamentalValuationAdapter()
@@ -153,4 +173,8 @@ if __name__ == '__main__':
     base_df = adapter.build_base_panel(
         valuation_source= '../origin_datas/value_valuation_panel.plk',
     )
-    adapter.save(base_df, STORE_PATH)
+    adapter.save_value_df(base_df, STORE_PATH)
+    fin_pit_df = adapter.build_fin_df('../origin_datas/roe_ttm.plk', '../origin_datas/_ckpt_ashare_regular_report_actual_dd.pkl')
+    FIN_STORE_PATH = '../datas/financial_base.parquet'
+
+    adapter.save(fin_pit_df, FIN_STORE_PATH)
