@@ -1,8 +1,9 @@
 import polars as pl
+
 from strategy.factors.registry import FactorRegistry
-from .base import BaseValuationGenerator
-from .config import MetricCatalog, ValuationBusConfig
-from .utils import build_valuation_feature_bus
+from base import BaseValuationGenerator
+from config import MetricCatalog, ValuationBusConfig
+from utils import build_valuation_feature_bus
 
 
 @FactorRegistry.register('valuation.time_series')
@@ -30,10 +31,17 @@ class TimeSeriesValuation(BaseValuationGenerator):
         score_cols = [
             f'{k}_ts_alpha_zscore'
             for k in self.catalog.keys
-            if f'{k}_ts_alpha_zscore' in bus_df.columns
+            if k in bus_df.columns
         ]
 
         # 3. 严格收敛瘦表
         schema = self.bus_config.schema
 
         return bus_df.select([schema.sec_id_col, schema.date_col] + score_cols)
+
+if __name__ == '__main__':
+    from specs import METRIC_REGISTRY
+    tsv = TimeSeriesValuation(catalog = MetricCatalog().with_custom(['pe', 'ps', 'pcf', 'pb']))
+    df = pl.read_parquet('../../../datas/valuation_base.parquet')
+    df = df.rename({'pe_ttm': 'pe', 'ps_ttm': 'ps', 'pcf_ttm': 'pcf', 'pb_ttm': 'pb'})
+    result = tsv.generate(df)

@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Iterable
-from .specs import MetricSpec, METRIC_REGISTRY
+from specs import MetricSpec, METRIC_REGISTRY
 # from .. import registry
 
 
@@ -45,7 +45,6 @@ class MetricCatalog:
         '''解析出active的metric, 若未配置或不在raw_col中则不返回'''
         col_set = set(available_columns)
         registry = {**METRIC_REGISTRY, **dict(self.custom_specs)}
-
         return {
             k: registry[k]
             for k in self.keys

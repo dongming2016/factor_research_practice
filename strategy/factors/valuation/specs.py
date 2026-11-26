@@ -61,9 +61,9 @@ class MetricSpec:
 # 全局指标注册中心： 后续扩展指标在此追加
 # =========================================================
 METRIC_REGISTRY: Dict[str, MetricSpec] = {
-    'ts_pe': MetricSpec(raw_col='pe_ttm', transform='inverse', higher_is_alpha=True),
-    'ts_pb': MetricSpec(raw_col='pb', transform='inverse', higher_is_alpha=True),
-    'ts_ps': MetricSpec(raw_col='ps', transform='inverse', higher_is_alpha=True),
-    'ts_pcf': MetricSpec(raw_col='pcf', transform='inverse', higher_is_alpha=True),
-    'ts_roe': MetricSpec(raw_col='roe', transform='identity', higher_is_alpha=True, clip_min=-0.5,clip_max=0.8)
+    'pe': MetricSpec(raw_col='pe', transform='inverse', higher_is_alpha=True),
+    'pb': MetricSpec(raw_col='pb', transform='inverse', higher_is_alpha=True),
+    'ps': MetricSpec(raw_col='ps', transform='inverse', higher_is_alpha=True),
+    'pcf': MetricSpec(raw_col='pcf', transform='inverse', higher_is_alpha=True),
+    'roe': MetricSpec(raw_col='roe', transform='identity', higher_is_alpha=True, clip_min=-0.5,clip_max=0.8)
 }

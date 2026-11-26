@@ -12,7 +12,7 @@ from .mixins import GridAlignmentMixin, AsOfAlignmentMixin, DateFilterMixin
 
 class BaseDataLoader(ABC):
     """纯粹的抽象基类，只规范数据加载契约"""
-    def __init__(self, data_dir: Union[str, Path] = "./data"):
+    def __init__(self, data_dir: Union[str, Path] = "./datas"):
         self.data_dir = Path(data_dir)
 
     @abstractmethod
