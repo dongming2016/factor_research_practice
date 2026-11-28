@@ -13,7 +13,7 @@ class BaseFactorGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate(self, df: pl.DataFrame) -> pl.DataFrame:
+    def generate(self, df: pl.DataFrame, keep_tmp=False) -> pl.DataFrame:
         '''
         核心生成入口，接收勾选的财务因子
         返回带一个或多个新因子列的 DataFrame
