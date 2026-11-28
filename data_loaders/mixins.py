@@ -5,7 +5,7 @@ mixins.py
 
 from typing import List, Optional
 import polars as pl
-from .trading_calendar import TradingCalendar
+from trading_calendar import TradingCalendar
 
 
 class CalendarAwareMixin:

@@ -83,25 +83,8 @@ class FundamentalValuationAdapter:
         s = self.schema
         metric_col = [c for c in self.KNOWN_METRIC_COLS if c in df.columns]
 
-        exprs: List[pl.Expr] = [
-            pl.col(s.sec_id_col).cast(pl.String),
-            pl.col(s.date_col).cast(pl.Date),
-            (
-                pl.col(s.industry_col).cast(pl.String).fill_null('UNKNOWN')
-                if s.industry_col in df.columns
-                else pl.lit('UNKNOWN', dtype=pl.String).alias(s.industry_col)
-            ),
-            (
-                pl.col(s.restructure_col).fill_null(0).cast(pl.Int8)
-                if s.restructure_col in df.columns
-                else pl.lit(0, dtype=pl.Int8).alias(s.restructure_col)
-            )
-        ]
-        for col in metric_col:
-            exprs.append(pl.col(col).cast(pl.Float64).fill_nan(None).alias(col))
-
         return (
-            df.with_columns(exprs)
+            df
             .unique(subset=[s.sec_id_col, s.date_col], keep='last')
             .sort([s.sec_id_col, s.date_col])
         )

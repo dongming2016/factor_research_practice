@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Union, List
 import polars as pl
-from .mixins import GridAlignmentMixin, AsOfAlignmentMixin, DateFilterMixin
+from mixins import GridAlignmentMixin, AsOfAlignmentMixin, DateFilterMixin
 
 
 class BaseDataLoader(ABC):
@@ -87,3 +87,86 @@ class NAVDataLoader(BaseDataLoader, DateFilterMixin):
             .over("fund_id")
             .alias("ret")
         )
+
+class ValuationDataLoader(BaseDataLoader, DateFilterMixin):
+    '''
+    估值特征总线组装加载器
+    '''
+    METRIC_COLS: tuple[str, ...] = (
+        "pe_ttm",
+        "pb",
+        "roe",
+        "ps_ttm",
+        "pcf_ttm",
+        "div_yield_ttm",
+    )
+
+    def _scan_filtered(self, file_name: str, s_dt, e_dt) -> pl.LazyFrame:
+        lf = pl.scan_parquet(self.data_dir / file_name)
+        if s_dt:
+            lf = lf.filter(pl.col("date") >= s_dt)
+        if e_dt:
+            lf = lf.filter(pl.col("date") <= e_dt)
+        return lf
+
+    def load(
+            self,
+            start_date: Optional[str] = None,
+            end_date: Optional[str] = None,
+            base_file: str = "valuation_base.parquet",
+            industry_file: str = "industry_daily.parquet",
+            suspend_file: Optional[str] = None,
+            restruct_file: Optional[str] = None,
+            mask_suspend: bool = True,
+    ):
+        s_dt = pl.lit(start_date).str.to_date() if start_date else None
+        e_dt = pl.lit(end_date).str.to_date() if end_date else None
+
+        q = self._scan_filtered(base_file, s_dt, e_dt)
+
+        if industry_file and (self.data_dir / industry_file).exists():
+            ind_lf = self._scan_filtered(industry_file, s_dt, e_dt)
+            q = q.join(ind_lf, on = ['sec_id', 'date'], how = 'left')
+
+        if suspend_file and (self.data_dir / suspend_file).exists():
+            susp_lf = self._scan_filtered(suspend_file, s_dt, e_dt)
+            q = q.join(susp_lf, on = ['sec_id', 'date'], how = 'left')
+
+        if restruct_file and (self.data_dir / restruct_file).exists():
+            rest_lf = self._scan_filtered(restruct_file, s_dt, e_dt)
+            q = q.join(rest_lf, on = ['sec_id', 'date'], how = 'left')
+
+        df = q.collect()
+
+        if mask_suspend and 'is_suspend' in df.columns:
+            val_cols = [c for c in self.METRIC_COLS if c in df.columns]
+            if val_cols:
+                df = df.with_columns(
+                    pl.when(pl.col('is_suspend').fill_null(0) == 1)
+                    .then(None)
+                    .otherwise(pl.col(c))
+                    .alias(c)
+                    for c in val_cols
+                )
+
+        post_exprs: list[pl.Expr] = [
+            (
+                pl.col('industry').cast(pl.String).fill_null('UNKNOWN')
+                if 'industry' in df.columns
+                else pl.lit('UNKNOWN', dtype=pl.String).alias('industry')
+            ),
+            (
+                pl.col('is_restructured').fill_null(0).cast(pl.Int8)
+                if 'is_restructured' in df.columns
+                else pl.lit(0, dtype=pl.Int8).alias('is_restructured')
+            )
+        ]
+        df = df.with_columns(post_exprs)
+
+        return self.filter_trading_days(df).sort(['sec_id', 'date'])
+
+
+if __name__ == '__main__':
+    val_data_loader = ValuationDataLoader()
+    val_datas = val_data_loader.load()
+

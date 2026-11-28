@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Iterable
-from specs import MetricSpec, METRIC_REGISTRY
+from .specs import MetricSpec, METRIC_REGISTRY
 # from .. import registry
 
 
