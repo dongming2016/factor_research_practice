@@ -29,7 +29,7 @@ class TradingCalendar:
 
     def initialize(
         self,
-        file_path: Union[str, Path] = "./data/sse_calendar.csv",
+        file_path: Union[str, Path] = "./datas/trading_calendar.parquet",
         date_col: str = "trade_date",
         is_open_col: Optional[str] = "is_open",
         start_date: Optional[str] = None,
