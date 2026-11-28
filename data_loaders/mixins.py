@@ -2,17 +2,20 @@
 mixins.py
 提供可插拔的对齐与数据处理能力
 """
-
+import os
+from pathlib import Path
 from typing import List, Optional
 import polars as pl
-from trading_calendar import TradingCalendar
+from .trading_calendar import TradingCalendar
 
 
 class CalendarAwareMixin:
     """提供统一日历访问能力的基石 Mixin"""
     @property
     def calendar(self) -> TradingCalendar:
-        return TradingCalendar().initialize(file_path = '../datas/trading_calendar.parquet', date_col = 'date')
+        base_path = os.path.dirname(__file__)
+        file_path = os.path.join(Path(base_path).parent, 'datas/trading_calendar.parquet')
+        return TradingCalendar().initialize(file_path = file_path, date_col = 'date')
 
 
 class GridAlignmentMixin(CalendarAwareMixin):

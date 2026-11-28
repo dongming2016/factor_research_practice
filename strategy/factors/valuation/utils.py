@@ -4,8 +4,8 @@
 import polars as pl
 from typing import Dict, Optional, List
 
-from config import MetricCatalog, ValuationBusConfig
-from specs import MetricSpec
+from strategy.factors.valuation.config import MetricCatalog, ValuationBusConfig
+from strategy.factors.valuation.specs import MetricSpec
 
 # 定义跨
 # DEFAULT_VALUATION_METRICS: Dict[str, str] = {
@@ -84,7 +84,7 @@ def build_valuation_feature_bus(
     if all(c in df.columns for c in expected_cols):
         return df
 
-    res_df, _ = _compute_batch_internal(catalog, config, df)
+    res_df, _ = _compute_batch_internal(catalog, config, df, keep_state_cols=True)
     print(res_df)
     return res_df
 

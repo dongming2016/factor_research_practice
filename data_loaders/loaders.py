@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Union, List
 import polars as pl
-from mixins import GridAlignmentMixin, AsOfAlignmentMixin, DateFilterMixin
+from .mixins import GridAlignmentMixin, AsOfAlignmentMixin, DateFilterMixin
 
 
 class BaseDataLoader(ABC):

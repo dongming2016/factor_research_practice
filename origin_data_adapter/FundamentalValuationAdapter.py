@@ -20,7 +20,7 @@ class FundamentalValuationAdapter:
 
     DEFAULT_COL_MAPPING: dict[str, str] = {
         'pe_ratio_ttm': 'pe_ttm',
-        'pb_ratio_ttm': 'pb_ttm',
+        'pb_ratio_ttm': 'pb',
         'ps_ratio_ttm': 'ps_ttm',
         'pcf_ratio_ttm': 'pcf_ttm',
         'dividend_yield_ttm': 'dividend_ttm',
